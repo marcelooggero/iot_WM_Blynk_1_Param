@@ -1,18 +1,19 @@
 /*************************************************************************
- * Title: Simple ESP-8266 blynk/yunshan wifi relay control
- * File: esp8266_yunshan_relay.ino
- * Author: James Eli
- * Date: 12/25/2016
+ * Title: WiFiManager and Blynk Token Input 
+ * File: WM_Blynk_token_1parameter.ino
+ * Author: Marcelo Oggero
+ * Date: 10/10/2021
  *
- * This program controls a Yunshan wifi relay module communicating through 
- * the onboard esp-8266-12e module. The module is controlled from the
- * internet via the Blynk cloud app. 
+ * This program controls a ESP8266 Mini board with a power output relay (220VAC 50A). The module is controlled from the
+ * internet via the Blynk cloud app that can read a momentary pushbutton input to change relay status. Alco can receive status change throught Blynk app 
  * 
  * Notes:
  *  (1) Requires the following arduino libraries:
- *      ESP8266
- *      Blynk
- *  (2) Compiled with arduino ide 1.6.12
+ *      ESP8266 2.7.4
+ *      Blynk 1.0.1
+ *      WiFiManager 2.0.4 Beta 
+ *      ArduinoJson 5.13.5
+ *  (2) Compiled with arduino ide 1.8.12
  *  (3) Uses three Blynk app widgets:
  *       V0: button configured as a switch.
  *       V1: led.
@@ -34,7 +35,7 @@
 // Esp8266 pins.
 #define ESP8266_GPIO2    2 // Blue LED.
 #define ESP8266_GPIO4    4 // Relay control.
-#define ESP8266_GPIO5    5 // Optocoupler input.
+#define ESP8266_GPIO0    0 // input.
 #define LED_PIN          ESP8266_GPIO2
 
     
@@ -80,7 +81,7 @@ void saveConfigCallback () {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 void setup() {
   pinMode( ESP8266_GPIO4, OUTPUT );       // Relay control pin.
-  pinMode( ESP8266_GPIO5, INPUT_PULLUP ); // Input pin.
+  pinMode( ESP8266_GPIO0, INPUT_PULLUP ); // Input pin.
   pinMode( LED_PIN, OUTPUT );             // ESP8266 module blue LED.
   digitalWrite( LED_PIN, LOW );           // Turn on LED.
   digitalWrite( LED_PIN, HIGH );          // Turn off LED.
@@ -232,10 +233,10 @@ BLYNK_WRITE( V0 ) {
 // Debounce input pin.
 int DebouncePin( void ) {
   // Read input pin.
-  if ( digitalRead( ESP8266_GPIO5 ) == HIGH ) {
+  if ( digitalRead( ESP8266_GPIO0 ) == HIGH ) {
     // Debounce input.
     delay( 25 );
-    if ( digitalRead( ESP8266_GPIO5 ) == HIGH )
+    if ( digitalRead( ESP8266_GPIO0 ) == HIGH )
       return HIGH;
   }
   return LOW;
