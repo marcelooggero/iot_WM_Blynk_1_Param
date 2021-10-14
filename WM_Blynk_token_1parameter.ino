@@ -5,7 +5,11 @@
  * Date: 10/10/2021
  *
  * This program controls a ESP8266 Mini board with a power output relay (220VAC 50A). The module is controlled from the
- * internet via the Blynk cloud app that can read a momentary pushbutton input to change relay status. Alco can receive status change throught Blynk app 
+ * internet via the Blynk cloud app that can read a momentary pushbutton input to change relay status. Alco can receive status change throught Blynk app.
+ * Download Blynk APP, create a new project from witch you can get the token, then ADD a button with output pin V0 type SWITCH.
+ * The ESP8266 output relay is connected to D2 (GPIO4). 
+ * The momentary pushbutton is connected to D2 (GPIO0)
+ * 
  * 
  * Notes:
  *  (1) Requires the following arduino libraries:
@@ -15,14 +19,14 @@
  *      ArduinoJson 5.13.5
  *  (2) Compiled with arduino ide 1.8.12
  *  (3) Uses three Blynk app widgets:
- *       V0: button configured as a switch.
- *       V1: led.
- *       V2: led.
+ *       V0: Momentary pushbutton.
+ *       V1: --
+ *       V2: --
  *************************************************************************
  * Change Log:
- *   12/25/2016: Initial release. JME
- *   12/31/2016: Added input pin status. JME
- *   01/15/2017: Added volatile. JME
+ *   10/10/2021: Initial release.
+ *   14/10/2021 Final Version 1.0.0
+ *   
  *************************************************************************/
 #include <FS.h> //this needs to be first, or it all crashes and burns...
 #include <ESP8266WiFi.h>
@@ -41,8 +45,10 @@
     
 // Flag for sync on re-connection.
 bool isFirstConnect = true; 
-volatile int relayState = LOW;    // Blynk app pushbutton status.
+volatile int relayState = 0;    // Blynk app pushbutton status.
 volatile int inputState = LOW;    // Input pin state.
+BlynkTimer timer;
+int btnState = HIGH;
 
 /////////////////////////////////////////////////////////////////////////////////////////PARA WIFIMANAGER
 // Set web server port number to 80
@@ -201,11 +207,43 @@ Serial.begin(115200);
 
   Blynk.begin( blynk_token, WiFi.SSID().c_str(), WiFi.psk().c_str() );    // Initiate Blynk conection.
 
+  // Setup a function to be called every 100 ms
+  timer.setInterval(100L, checkPhysicalButton);
   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                    FIN SETUP
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void checkPhysicalButton()
+{
+  
+  if (digitalRead(ESP8266_GPIO0) == LOW) {
+    // btnState is used to avoid sequential toggles
+    if (btnState != LOW) {
+     // Serial.println("checkPhysicalButton-toggleState");
+      // Toggle LED state
+      relayState = !relayState;
+      digitalWrite(ESP8266_GPIO4, relayState);
+
+      // Update Button Widget
+      Blynk.virtualWrite(V0, relayState);
+    }
+    btnState = LOW;
+  } else {
+    btnState = HIGH;
+  }
+}
+
+// Blynk app relay command.
+BLYNK_WRITE( V0 ) {
+  //Serial.println("BLYNK_WRITE");
+  if ( param.asInt() != relayState ) {
+    relayState = !relayState;                  // Toggle state.
+    digitalWrite( ESP8266_GPIO4, relayState ); // Relay control pin.
+    //Blynk.virtualWrite( V0, relayState*255 );  // Set Blynk app LED.
+  }
+}
 
  
 // This function runs every time Blynk connection is established.
@@ -221,14 +259,6 @@ BLYNK_READ( V2 ) {
   CheckInput();
 }
  
-// Blynk app relay command.
-BLYNK_WRITE( V0 ) {
-  if ( param.asInt() != relayState ) {
-    relayState = !relayState;                  // Toggle state.
-    digitalWrite( ESP8266_GPIO4, relayState ); // Relay control pin.
-    Blynk.virtualWrite( V1, relayState*255 );  // Set Blynk app LED.
-  }
-}
  
 // Debounce input pin.
 int DebouncePin( void ) {
@@ -256,5 +286,5 @@ void loop() {
   //Serial.println("psk mioooooo"+ WiFi.psk());
   Blynk.run();
   CheckInput();
-  //yield(); //Updated: 3/8/2017
+  timer.run(); //timer to check physical input
 }
